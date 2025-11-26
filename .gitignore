@@ -1,15 +1,13 @@
 .env
 .venc
 __pycache__/
+logs/
 *.log
 brokers/core/.gateway.py.swp
-logs/system.log.2025-08-28
-logs/system.log.2025-09-01
-logs/system.log.2025-08-29
-logs/system.log.2025-09-03
 strategy/.wave.py.swp
 strategy/.cache/zerodha_master_contract.csv
 strategy/configs/.wave.yml.swp
 brokers/.DS_Store
 .cache/zerodha_master_contract.csv
+.cache/
 wave_new.py

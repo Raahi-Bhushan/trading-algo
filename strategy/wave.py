@@ -12,12 +12,16 @@ import time
 import yaml
 import logging
 from typing import Dict, List, Tuple
-from dotenv import load_dotenv
-load_dotenv()
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
 import mibian 
 
 class WaveStrategy:
-    """Main trading system that implements wave trading strategy"""
+    """
+    Main trading system that implements wave trading strategy
+
+    PS: This strategy is compatible with both Zerodha and Fyers brokers.
+    """
     
     def __init__(self, config: Dict, broker, order_tracker=None):
         # Core configuration
@@ -364,20 +368,24 @@ class WaveStrategy:
                 quantity=self.sell_quantity, product_type=ProductType.MARGIN, order_type=OrderType.LIMIT,
                 price=final_sell_price, tag=self.tag
             ) # TODO: Variety Supported is only Regular for now
+            logger.info(f"Placing sell order with request: {req}")
             sell_order_resp = self.broker.place_order(req)
 
             logger.info("Sell Order Response - {}".format(sell_order_resp))
 
-            sell_order_id = sell_order_resp.order_id
-            if sell_order_id not in self.orders:
-                self.handle_order_update_call_tracker[sell_order_id] = False
-
-            if sell_order_id != -1:
+            sell_order_id = sell_order_resp.order_id if sell_order_resp and hasattr(sell_order_resp, 'order_id') else None
+            if sell_order_id:
+                if sell_order_id not in self.orders:
+                    self.handle_order_update_call_tracker[sell_order_id] = False
                 logger.info(f"Placed SELL order {sell_order_id} for {self.sell_quantity} @ {final_sell_price}")
                 self.add_order_to_list(sell_order_id, final_sell_price, self.sell_quantity, "SELL", symbol, -1)
                 logger.info(f"handle_order_update_call_tracker: {self.handle_order_update_call_tracker}")
-                if not self.handle_order_update_call_tracker[sell_order_id]:
-                    self.handle_order_update(self.handle_order_update_call_tracker_response_dict[sell_order_id])
+                if not self.handle_order_update_call_tracker.get(sell_order_id):
+                    if sell_order_id in self.handle_order_update_call_tracker_response_dict:
+                        self.handle_order_update(self.handle_order_update_call_tracker_response_dict[sell_order_id])
+            else:
+                logger.error("Sell order placement failed, no order_id received.")
+                sell_order_id = -1
 
         # only when the sell order has been placed or sell order was restricred and buy order was not restricted
         if (restrict_sell_order == 1 or sell_order_id != -1) and restrict_buy_order == 0:
@@ -386,26 +394,29 @@ class WaveStrategy:
                 quantity=self.buy_quantity, product_type=ProductType.MARGIN, order_type=OrderType.LIMIT,
                 price=final_buy_price, tag=self.tag
             ) # TODO: Variety Supported is only Regular for now
+            logger.info(f"Placing buy order with request: {req}")
             buy_order_resp = self.broker.place_order(req)
             logger.info("Buy Order Response - {}".format(buy_order_resp))
-            buy_order_id = buy_order_resp.order_id
-            self.handle_order_update_call_tracker[buy_order_id] = False
-            if buy_order_id != -1:
+            buy_order_id = buy_order_resp.order_id if buy_order_resp and hasattr(buy_order_resp, 'order_id') else None
+            if buy_order_id:
+                self.handle_order_update_call_tracker[buy_order_id] = False
                 logger.info(f"Placed BUY order {buy_order_id} for {self.buy_quantity} @ {final_buy_price}")
                 if sell_order_id != -1:
-                    # Only if sell order is present in the orders list, then add buy order id as associated order id
-                    # if sell order is rejected or cancelled - this is not done
                     if sell_order_id in self.orders:
                         self.add_order_to_list(sell_order_id, final_sell_price, self.sell_quantity, "SELL", symbol, buy_order_id)
                 self.add_order_to_list(buy_order_id, final_buy_price, self.buy_quantity, "BUY", symbol, sell_order_id)
                 logger.info(f"handle_order_update_call_tracker: {self.handle_order_update_call_tracker}")
-                if not self.handle_order_update_call_tracker[buy_order_id]:
-                    self.handle_order_update(self.handle_order_update_call_tracker_response_dict[buy_order_id])
+                if not self.handle_order_update_call_tracker.get(buy_order_id):
+                    if buy_order_id in self.handle_order_update_call_tracker_response_dict:
+                        self.handle_order_update(self.handle_order_update_call_tracker_response_dict[buy_order_id])
             else:
                 logger.warning(f"Buy order failed, cancelling associated sell order {sell_order_id}")
-                self._remove_order(sell_order_id)
-                del self.handle_order_update_call_tracker[sell_order_id]
-                del self.handle_order_update_call_tracker_response_dict[sell_order_id]
+                if sell_order_id != -1:
+                    self._remove_order(sell_order_id)
+                    if sell_order_id in self.handle_order_update_call_tracker:
+                        del self.handle_order_update_call_tracker[sell_order_id]
+                    if sell_order_id in self.handle_order_update_call_tracker_response_dict:
+                        del self.handle_order_update_call_tracker_response_dict[sell_order_id]
 
     def add_order_to_list(self, order_id, price, quantity, transaction_type, symbol, associated_order_id):
         now = datetime.datetime.now()
@@ -920,10 +931,6 @@ if __name__ == "__main__":
     import random
     import traceback
     import warnings
-    warnings.filterwarnings("ignore")
-
-    import logging
-    logger.setLevel(logging.INFO)
     
     # ==========================================================================
     # SECTION 1: CONFIGURATION LOADING AND PARSING
@@ -1075,6 +1082,8 @@ PARAMETER GROUPS:
                         help='Path to YAML configuration file containing default values. '
                              'Defaults to strategy/configs/wave.yml')
         
+        parser.add_argument('--env-file', type=str, default='.env', help='Path to the .env file')
+
         return parser
 
     def show_config(config):
@@ -1413,7 +1422,7 @@ PARAMETER GROUPS:
     try:
         logger.info("--- Starting Main Monitoring Loop ---")
         while True:
-            time.sleep(60)
+            time.sleep(10)
             logger.info("Waking up for periodic check...")
             
             trading_system.print_current_status()

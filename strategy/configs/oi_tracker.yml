@@ -1,0 +1,18 @@
+default:
+  index_symbol: "NSE:NIFTY 50"
+  strike_difference: 50
+  alert_sound_path: "path/to/your/alert.mp3"
+  intervals:
+    "3m": 3
+    "5m": 5
+    "10m": 10
+    "15m": 15
+    "30m": 30
+    "3h": 180
+  color_thresholds:
+    "3m": 10
+    "5m": 12
+    "10m": 15
+    "15m": 30
+    "30m": 30
+    "3h": 100

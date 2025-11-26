@@ -74,7 +74,7 @@ class SurvivorStrategy:
     3. **Strike Adjustment**: Dynamically adjusts strikes for adequate premium
     4. **Reset Logic**: Prevents runaway reference point drift
 
-    PS: This will only work with Zerodha broker out of the box. For Fyers, there needs to be some straight forward changes to get quotes, place orders etc.
+    PS: This strategy is compatible with both Zerodha and Fyers brokers.
     """
     
     def __init__(self, broker, config, order_tracker):
@@ -104,7 +104,10 @@ class SurvivorStrategy:
 
     def _nifty_quote(self):
         symbol_code = self.strat_var_index_symbol
-        return self.broker.get_quote(symbol_code)
+        logger.info(f"Fetching nifty quote for symbol: {symbol_code}")
+        quote = self.broker.get_quote(symbol_code)
+        logger.info(f"Nifty quote: {quote}")
+        return quote
 
     def _initialize_state(self):
 
@@ -527,6 +530,7 @@ class SurvivorStrategy:
                 quantity=quantity, product_type=ProductType.MARGIN, order_type=OrderType.MARKET,
                 price=None, tag=self.strat_var_tag
             )
+        logger.info(f"Placing order with request: {req}")
         order_resp = self.broker.place_order(req)
         order_status = order_resp.status
         logger.debug(f"Order placement response: {order_resp}")
@@ -630,9 +634,14 @@ if __name__ == "__main__":
     # from brokers.zerodha import ZerodhaBroker
     from logger import logger
     from queue import Queue
+    import queue
     import random
     import traceback
     import warnings
+
+from dotenv import load_dotenv
+load_dotenv()
+
     warnings.filterwarnings("ignore")
 
     import logging
@@ -812,6 +821,8 @@ PARAMETER GROUPS:
                         help='Path to YAML configuration file containing default values. '
                              'Defaults to system/strategy/configs/survivor.yml')
         
+        parser.add_argument('--env-file', type=str, default='.env', help='Path to the .env file')
+
         return parser
 
     def show_config(config):
@@ -1140,7 +1151,7 @@ PARAMETER GROUPS:
             try:
                 # STEP 1: Get market data from dispatcher queue
                 # This call blocks until new tick data arrives from websocket
-                tick_data = dispatcher._main_queue.get()
+                tick_data = dispatcher._main_queue.get(timeout=10)
                 
                 # STEP 2: Extract the primary instrument data
                 # tick_data is a list, we process the first instrument
@@ -1173,6 +1184,10 @@ PARAMETER GROUPS:
             except KeyboardInterrupt:
                 # Handle graceful shutdown on Ctrl+C
                 logger.info("SHUTDOWN REQUESTED - Stopping strategy...")
+                break
+
+            except queue.Empty:
+                logger.info("No ticks received in 10 seconds. Exiting.")
                 break
                 
             except Exception as tick_error:
