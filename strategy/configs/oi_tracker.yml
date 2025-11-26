@@ -16,3 +16,12 @@ default:
     "15m": 30
     "30m": 30
     "3h": 100
+  trading:
+    enabled: true
+    # Defines the OI percentage change threshold that triggers a trade.
+    # The trade is triggered for the *most recent interval* (e.g., '3m').
+    trade_threshold_percent: 20
+    quantity: 75
+    product_type: "NRML" # NRML for normal, MIS for intraday
+    order_type: "MARKET" # MARKET or LIMIT
+    tag: "OI_TRACKER"

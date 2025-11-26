@@ -29,13 +29,15 @@ class OITrackerStrategy:
         self.broker.download_instruments()
         self.instruments = self.broker.get_instruments()
 
+        # Trading parameters
+        self.trading_config = self.strat_var_trading
+
         self._initialize_state()
 
     def _initialize_state(self):
         """Initializes the state of the strategy."""
         logger.info("Initializing OI Tracker Strategy...")
-        # Initialize any necessary variables here
-        pass
+        self.active_trades = set()
 
     def on_ticks_update(self, ticks):
         """
@@ -142,6 +144,48 @@ class OITrackerStrategy:
         percentage_change = (absolute_change / historical_oi) * 100
         return percentage_change, absolute_change
 
+    def _check_and_place_trade(self, strike, option_type, percentage_change):
+        """
+        Check if the OI change crosses the threshold and place a trade.
+        """
+        if not self.trading_config.get('enabled', False):
+            return
+
+        trade_key = (strike, option_type)
+        if trade_key in self.active_trades:
+            return # A trade has already been placed for this strike and option type.
+
+        if percentage_change > self.trading_config['trade_threshold_percent']:
+            logger.info(f"OI change of {percentage_change:.2f}% for {strike} {option_type} crossed the threshold. Placing trade.")
+            symbol = self.get_option_symbol(strike, option_type)
+            if symbol:
+                self._place_order(symbol)
+                self.active_trades.add(trade_key)
+
+    def _place_order(self, symbol):
+        """
+        Place a trade order.
+        """
+        req = OrderRequest(
+            symbol=symbol,
+            exchange=Exchange.NFO,
+            transaction_type=TransactionType.BUY, # Or SELL, based on strategy logic
+            quantity=self.trading_config['quantity'],
+            product_type=ProductType[self.trading_config['product_type']],
+            order_type=OrderType[self.trading_config['order_type']],
+            price=None, # For MARKET orders
+            tag=self.trading_config['tag']
+        )
+        logger.info(f"Placing order: {req}")
+        try:
+            order_resp = self.broker.place_order(req)
+            if order_resp and order_resp.order_id:
+                logger.info(f"Order placed successfully, order_id: {order_resp.order_id}")
+            else:
+                logger.error("Order placement failed.")
+        except Exception as e:
+            logger.error(f"Error placing order: {e}")
+
     def update_tables(self):
         """
         Update the Put, Call, and NIFTY tables.
@@ -169,6 +213,10 @@ class OITrackerStrategy:
                         if is_red:
                             red_cell_count += 1
                         row.append(formatted_cell)
+
+                        # Check and place trade for the most recent interval
+                        if interval == list(self.strat_var_intervals.keys())[0]:
+                            self._check_and_place_trade(strike, option_type, percentage_change)
                     else:
                         row.append("N/A")
                 table_data.append(row)
