@@ -361,6 +361,18 @@ class FyersDriver(BrokerDriver):
         except Exception:
             return []
 
+    def get_order_status(self, order_id: str) -> str:
+        if not self._fyers_model:
+            return "UNKNOWN"
+        try:
+            order_book = self.get_orderbook()
+            for order in order_book:
+                if order.get("id") == order_id:
+                    return order.get("status")
+            return "UNKNOWN"
+        except Exception:
+            return "UNKNOWN"
+
     def get_tradebook(self) -> List[Dict[str, Any]]:
         if not self._fyers_model:
             return []

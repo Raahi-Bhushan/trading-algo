@@ -1,0 +1,9 @@
+default:
+  symbols:
+    - "NSE:NIFTY24FEBFUT"
+    - "NSE:BANKNIFTY24FEBFUT"
+    - "MCX:GOLDM24FEBFUT"
+    - "MCX:SILVERM24MARFUT"
+  ema_length: 200
+  vwap_length: 14
+  support_proximity_threshold: 0.01
