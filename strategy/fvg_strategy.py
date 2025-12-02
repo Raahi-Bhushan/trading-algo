@@ -248,7 +248,9 @@ if __name__ == "__main__":
     from orders import OrderTracker
     from logger import logger
     from dotenv import load_dotenv
-    load_dotenv()
+    # Explicitly load .env from the project root
+    dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
+    load_dotenv(dotenv_path=dotenv_path)
     import logging
     logger.setLevel(logging.INFO)
 
