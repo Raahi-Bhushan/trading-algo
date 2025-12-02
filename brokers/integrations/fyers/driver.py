@@ -58,6 +58,7 @@ class FyersDriver(BrokerDriver):
         self._client_id: Optional[str] = None
         self._access_token: Optional[str] = None
         self._fyers_model = None
+        self.master_contract_df = None
 
         # Lazy import to avoid hard dependency if not used
         import os

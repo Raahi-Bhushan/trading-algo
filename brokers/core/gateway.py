@@ -177,6 +177,9 @@ class BrokerGateway:
     def get_instruments(self) -> List[Instrument]:
         return self.driver.get_instruments()
 
+    def get_nse_futures_symbols(self) -> List[str]:
+        return self.driver.get_nse_futures_symbols()
+
     # --- Websocket ---
     def connect_websocket(
         self,

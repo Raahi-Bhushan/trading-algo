@@ -20,6 +20,7 @@ class FVGStrategy:
         self.broker = broker
         self.order_tracker = order_tracker
 
+        self.broker.download_instruments()
         self.symbols = self.broker.get_nse_futures_symbols()
         self.positions = {}
 
@@ -260,7 +261,9 @@ if __name__ == "__main__":
     parser.add_argument('--support-proximity-threshold', type=float, help='Proximity threshold for support zone')
     args = parser.parse_args()
 
-    config_file = os.path.join(os.path.dirname(__file__), "configs/fvg_strategy.yml")
+    # Construct an absolute path to the config file
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_file = os.path.join(project_root, "strategy", "configs", "fvg_strategy.yml")
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)['default']
 

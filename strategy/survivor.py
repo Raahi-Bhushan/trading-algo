@@ -646,8 +646,9 @@ if __name__ == "__main__":
     # SECTION 1: CONFIGURATION LOADING AND PARSING
     # ==========================================================================
     
-    # Load default configuration from YAML file
-    config_file = os.path.join(os.path.dirname(__file__), "configs/survivor.yml")
+    # Construct an absolute path to the config file
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    config_file = os.path.join(project_root, "strategy", "configs", "survivor.yml")
     with open(config_file, 'r') as f:
         config = yaml.safe_load(f)['default']
 
