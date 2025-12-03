@@ -58,6 +58,7 @@ class FyersDriver(BrokerDriver):
         self._client_id: Optional[str] = None
         self._access_token: Optional[str] = None
         self._fyers_model = None
+        self.master_contract_df = None
 
         # Lazy import to avoid hard dependency if not used
         import os
@@ -361,6 +362,18 @@ class FyersDriver(BrokerDriver):
         except Exception:
             return []
 
+    def get_order_status(self, order_id: str) -> str:
+        if not self._fyers_model:
+            return "UNKNOWN"
+        try:
+            order_book = self.get_orderbook()
+            for order in order_book:
+                if order.get("id") == order_id:
+                    return order.get("status")
+            return "UNKNOWN"
+        except Exception:
+            return "UNKNOWN"
+
     def get_tradebook(self) -> List[Dict[str, Any]]:
         if not self._fyers_model:
             return []
@@ -579,6 +592,13 @@ class FyersDriver(BrokerDriver):
 
     def get_instruments(self) -> List[Instrument]:
         return self.master_contract_df
+
+    def get_nse_futures_symbols(self) -> List[str]:
+        if self.master_contract_df is None:
+            self.download_instruments()
+
+        futures_df = self.master_contract_df[self.master_contract_df['segment'] == 'NFO-FUT']
+        return futures_df['symbol'].tolist()
 
     # --- Option chain ---
     def get_option_chain(self, underlying: str, exchange: str, **kwargs: Any) -> List[Dict[str, Any]]:

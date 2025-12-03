@@ -20,4 +20,5 @@ dependencies = [
     "seaborn>=0.13.2",
     "stumpy>=1.13.0",
     "termcolor>=2.4.0",
+    "pandas-ta>=0.3.14b",
 ]
