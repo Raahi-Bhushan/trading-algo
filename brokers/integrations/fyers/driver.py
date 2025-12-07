@@ -608,6 +608,8 @@ class FyersDriver(BrokerDriver):
         nearest_expiry_df = futures_df.loc[futures_df.groupby('underlying_symbol')['expiry'].idxmin()]
 
         return nearest_expiry_df['symbol'].tolist()
+        futures_df = self.master_contract_df[self.master_contract_df['segment'] == 'NFO-FUT']
+        return futures_df['symbol'].tolist()
 
     # --- Option chain ---
     def get_option_chain(self, underlying: str, exchange: str, **kwargs: Any) -> List[Dict[str, Any]]:
