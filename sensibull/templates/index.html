@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Sensibull Position Tracker</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background: #f4f4f9;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #eee;
+        }
+
+        tr:hover {
+            background: #f1f1f1;
+        }
+
+        a {
+            text-decoration: none;
+            color: #007bff;
+            font-weight: bold;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .zero {
+            color: #ccc;
+            font-weight: normal;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>Sensibull Tracker Dashboard</h1>
+        <button onclick="restartApp()"
+            style="padding: 10px 20px; background: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">Restart
+            App</button>
+    </div>
+    <script>
+        function restartApp() {
+            if(confirm("Are you sure you want to restart the application?")) {
+                fetch('/restart', {method: 'POST'})
+                .then(response => response.text())
+                .then(text => {
+                    alert(text);
+                    setTimeout(() => location.reload(), 3000);
+                })
+                .catch(err => alert("Error restarting: " + err));
+            }
+        }
+    </script>
+    <table>
+        <thead>
+            <tr>
+                <th>Profile</th>
+                {% for date in dates %}
+                <th>{{ date }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for profile in profiles %}
+            <tr>
+                <td style="text-align: left; font-weight: bold;">{{ profile.name }}</td>
+                {% for date in dates %}
+                <td>
+                    {% set count = matrix.get((profile.id, date), 0) %}
+                    {% if count > 0 %}
+                    <a href="{{ url_for('daily_view', slug=profile.slug, date=date) }}" target="_blank">{{ count }}</a>
+                    {% else %}
+                    <span class="zero">-</span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+
+</html>
