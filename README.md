@@ -1,47 +1,115 @@
-# Sensibull Position Tracker
+# trading-algo
+Code for certain trading strategies
+1. [Survivor Algo](https://raahibhushan.substack.com/p/the-survivor-an-algorithm-for-when)
+2. [Wave Algo](https://raahibhushan.substack.com/p/the-wave-extractor-algo-2)
 
-## Overview
-A Flask-based application designed to track, visualize, and analyze the trading positions of verified Sensibull profiles. It provides a centralized dashboard for monitoring multiple profiles and a granular daily activity view to understand trading behaviors minute-by-minute.
+### Note
+Please test the code on your own setup and verify that it works as expected.  
+If you encounter any issues or unexpected behavior, feel free to [open an issue](../../issues) with relevant details so it can be addressed promptly.
 
-## Key Features
-- **Multi-Profile Dashboard**: Monitor multiple verified traders in a single view.
-- **Daily Activity Timeline**: specific timeline of every snapshot recorded throughout the trading day.
-- **Smart Diff Calculation**: Automatically highlights `ADDED`, `REMOVED`, and `MODIFIED` positions between snapshots.
-- **Daily Change Log**: A consolidated, chronological table of all modifications for the day.
+## Disclaimer:
+This algorithm is provided for **educational** and **informational purposes** only. Trading in financial markets involves substantial risk, and you may lose all or more than your initial investment. By using this algorithm, you acknowledge that all trading decisions are made at your own risk and discretion. The creators of this algorithm assume no liability or responsibility for any financial losses or damages incurred through its use. **Always do your own research and consult with a qualified financial advisor before trading.**
 
-## Visual Tour
 
-### Main Dashboard
-The entry point of the application, listing all tracked profiles.
-![Dashboard](/Users/vibhu/.gemini/antigravity/brain/20b3fd0e-8f79-4536-9326-9ce2f254206b/sensibull_app_walkthrough_1765520111499.webp)
+## Setup
 
-### Daily Activity View
-A detailed timeline showing exactly when changes were detected.
-![Daily View](/Users/vibhu/.gemini/antigravity/brain/20b3fd0e-8f79-4536-9326-9ce2f254206b/sensibull_details_popup_walkthrough_1765520300012.webp)
+### 1. Install Dependencies
 
-### Position Details Popup
-Clicking "View Details" on any timeline entry opens a popup that prioritizes **Recent Changes**. It clearly separates what was just Added, Removed, or Modified before showing the Overall Position.
-![Popup Details](/Users/vibhu/.gemini/antigravity/brain/20b3fd0e-8f79-4536-9326-9ce2f254206b/sensibull_popup_noprice_verification_1765523585229.webp)
+To insall uv, use:
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+or
 
-### Daily Change Log
-The **"See All Changes"** button provides a comprehensive log of every trade made during the day, sorted chronologically with the latest on top. This view isolates the *actions* taken without the noise of price fluctuations.
-![Daily Log](/Users/vibhu/.gemini/antigravity/brain/20b3fd0e-8f79-4536-9326-9ce2f254206b/sensibull_log_no_price_verification_retry_1765529636828.webp)
 
-## Value Adds: Understanding Profitable Traders
+```bash
+pip install uv
+```
 
-This tool is designed to reverse-engineer the psychology and strategy of successful traders by revealing patterns that static P&L screenshots miss:
+This uses `uv` for dependency management. Install dependencies:
+```bash
+uv sync
+```
 
-### 1. Decoding Conviction vs. Hedging
-By observing the sequence of trades, you can distinguish between a directional bet and a hedge.
-*   *Example*: If a trader adds Calls and then later adds Puts, are they hedging a profit or reacting to a reversal? The chronological log reveals the intent.
+Or if you prefer using pip:
 
-### 2. Identifying Position Management Styles
-*   **Pyramiding**: Does the trader add quantity to winning positions? This is a hallmark of high-conviction trend following.
-*   **Averaging Down**: Do they add to losing positions? This might indicate a mean-reversion strategy or a lack of discipline. This tool makes such patterns obvious.
+```bash
+pip install -r requirements.txt  # You may need to generate this from pyproject.toml
+```
 
-### 3. Reaction to Market Events
-The minute-by-minute log allows you to correlate trade entries with market price action.
-*   *Insight*: You can see if a trader panic-closed a position during a sudden spike or if they held firm. Understanding this "pain tolerance" is key to understanding their edge.
+### 2. Environment Configuration
 
-### 4. Noise Filtering
-The "Recent Changes" view filters out the noise of mark-to-market P&L swings and focuses purely on *execution*. Knowing *what they did* is far more actionable than knowing *how much they made*.
+1. Copy the sample environment file:
+   ```bash
+   cp .sample.env .env
+   ```
+
+2. Edit `.env` and fill in your broker credentials:
+   ```bash
+    # should be one of -  fyers, zeodha
+    BROKER_NAME=<INPUT_YOUR_BROKER_NAME>
+    BROKER_API_KEY=<INPUT_YOUR_API_KEY>
+    BROKER_API_SECRET=<INPUT_YOUR_API_SECRET>
+    BROKER_LOGIN_MODE='auto' # manual or auto - fyers only with 'auto' for now
+    BROKER_ID=<INPUT_YOUR_BROKER_ID>
+    BROKER_TOTP_REDIDRECT_URI=<INPUT_YOUR_TOTP_REDIRECT_URI>
+    BROKER_TOTP_KEY=<INPUT_YOUR_TOTP_KEY>
+    BROKER_TOTP_PIN=<INPUT_YOUR_TOTP_PIN> # Required for fyers, not zerodha
+    BROKER_PASSWORD=<INPUT_YOUR_BROKER_PASSWORD> # Required for zerodha, not fyers
+   ```
+
+### 3. Running Strategies
+
+Strategies should be placed in the `strategy/` folder.
+
+#### Running the Survivor Strategy
+
+
+**Basic usage (using default config):**
+```bash
+cd strategy/
+python survivor.py
+```
+
+**With custom parameters:**
+```bash
+cd strategy/
+python survivor.py \
+    --symbol-initials NIFTY25JAN30 \
+    --pe-gap 25 --ce-gap 25 \
+    --pe-quantity 50 --ce-quantity 50 \
+    --min-price-to-sell 15
+```
+
+**View current configuration:**
+```bash
+cd strategy/
+python survivor.py --show-config
+```
+
+### 4. Available Brokers
+
+- **Fyers**: Supports REST API for historical data, quotes, and WebSocket for live data
+- **Zerodha**: Supports KiteConnect API with order management and live data streaming
+
+### 5. Core Components
+
+- `brokers/`: Broker implementations (Fyers, Zerodha)
+- `dispatcher.py`: Data routing and queue management - WIP
+- `orders.py`: Order management utilities - WIP
+- `logger.py`: Logging configuration
+- `strategy/`: Place your trading strategies here
+
+### Example Usage
+
+```python
+# ==================
+# IMPORTANT - Strategies are tested with Zerodha, although it should work with fyers as well 
+# testing might be required to make sure the results are as expected
+# ==================
+from brokers import BrokerGateway
+broker = BrokerGateway.from_name(os.getenv("BROKER_NAME")) # fyers or zerodha
+# Get historical data, place orders, etc.
+```
+
+For more details, check the individual broker implementations and example strategies in the `strategy/` folder.
