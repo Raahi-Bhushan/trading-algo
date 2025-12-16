@@ -600,16 +600,16 @@ class FyersDriver(BrokerDriver):
         # Filter for NSE futures contracts that have not expired
         futures_df = self.master_contract_df[
             (self.master_contract_df['segment'] == 'NFO-FUT') &
-            (self.master_contract_df['expiry'] >= pd.to_datetime('today').date())
+            (pd.to_datetime(self.master_contract_df['expiry']) >= pd.to_datetime('today').normalize())
         ].copy()
 
-        # Find the nearest expiry for each underlying symbol
-        futures_df['expiry'] = pd.to_datetime(futures_df['expiry'])
-        nearest_expiry_df = futures_df.loc[futures_df.groupby('underlying_symbol')['expiry'].idxmin()]
+        # Sort by underlying and then expiry date
+        futures_df.sort_values(by=['underlying_symbol', 'expiry'], inplace=True)
 
-        return nearest_expiry_df['symbol'].tolist()
-        futures_df = self.master_contract_df[self.master_contract_df['segment'] == 'NFO-FUT']
-        return futures_df['symbol'].tolist()
+        # Drop duplicates, keeping only the first (nearest expiry) for each underlying
+        current_expiry_df = futures_df.drop_duplicates(subset='underlying_symbol', keep='first')
+
+        return current_expiry_df['symbol'].tolist()
 
     # --- Option chain ---
     def get_option_chain(self, underlying: str, exchange: str, **kwargs: Any) -> List[Dict[str, Any]]:
