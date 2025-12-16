@@ -94,10 +94,21 @@ class FVGStrategy:
                 if df.empty:
                     continue
 
+                # Convert timestamp to DatetimeIndex and sort
+                df['ts'] = pd.to_datetime(df['ts'], unit='s')
+                df.set_index('ts', inplace=True)
+                df.sort_index(inplace=True)
+
                 df['vwap'] = ta.vwap(df['high'], df['low'], df['close'], df['volume'])
                 df['ema200'] = ta.ema(df['close'], length=self.strat_var_ema_length)
                 df['bullish_fvg'] = self.is_bullish_fvg(df)
                 df['bearish_fvg'] = self.is_bearish_fvg(df)
+
+                # Drop rows with NaN values after indicator calculation
+                df.dropna(inplace=True)
+                if df.empty:
+                    continue
+
                 self.check_long_entry_conditions(df, symbol)
                 self.check_short_entry_conditions(df, symbol)
 
