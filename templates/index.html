@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Algo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Trading Algo</h1>
+        <div class="status-container">
+            <h3>Status: <span id="status">Stopped</span></h3>
+        </div>
+        <div class="config-container">
+            <h2>Configuration</h2>
+            <form id="config-form">
+                <div class="form-group">
+                    <label for="strategy_name">Strategy</label>
+                    <select id="strategy_name" name="strategy_name">
+                        <option value="survivor">Survivor</option>
+                        <option value="wave">Wave</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="symbol_initials">Symbol Initials</label>
+                    <input type="text" id="symbol_initials" name="symbol_initials" value="NIFTY25JAN30">
+                </div>
+                <div class="form-group">
+                    <label for="pe_gap">PE Gap</label>
+                    <input type="number" id="pe_gap" name="pe_gap" value="25">
+                </div>
+                <div class="form-group">
+                    <label for="ce_gap">CE Gap</label>
+                    <input type="number" id="ce_gap" name="ce_gap" value="25">
+                </div>
+                <div class="form-group">
+                    <label for="pe_quantity">PE Quantity</label>
+                    <input type="number" id="pe_quantity" name="pe_quantity" value="50">
+                </div>
+                <div class="form-group">
+                    <label for="ce_quantity">CE Quantity</label>
+                    <input type="number" id="ce_quantity" name="ce_quantity" value="50">
+                </div>
+                <div class="form-group">
+                    <label for="min_price_to_sell">Min Price to Sell</label>
+                    <input type="number" id="min_price_to_sell" name="min_price_to_sell" value="15">
+                </div>
+            </form>
+        </div>
+        <div class="controls-container">
+            <button id="start-btn">Start</button>
+            <button id="stop-btn">Stop</button>
+        </div>
+        <div class="logs-container">
+            <h2>Logs</h2>
+            <pre id="logs"></pre>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

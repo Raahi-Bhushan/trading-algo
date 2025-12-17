@@ -19,4 +19,5 @@ dependencies = [
     "scipy>=1.16.1",
     "seaborn>=0.13.2",
     "stumpy>=1.13.0",
+    "flask>=2.3.2",
 ]

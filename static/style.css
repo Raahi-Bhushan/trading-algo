@@ -1,0 +1,88 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1, h2, h3 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.status-container {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+#status {
+    padding: 5px 10px;
+    border-radius: 5px;
+    color: #fff;
+    background: #dc3545;
+}
+
+.config-container h2 {
+    text-align: left;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.controls-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    cursor: pointer;
+    margin: 0 10px;
+}
+
+#start-btn {
+    background: #28a745;
+}
+
+#stop-btn {
+    background: #dc3545;
+}
+
+.logs-container {
+    margin-top: 20px;
+}
+
+#logs {
+    background: #eee;
+    padding: 15px;
+    border-radius: 5px;
+    height: 300px;
+    overflow-y: scroll;
+    border: 1px solid #ddd;
+}
