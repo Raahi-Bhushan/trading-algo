@@ -34,9 +34,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     startBtn.addEventListener('click', () => {
         const formData = new FormData(configForm);
+        const strategyName = formData.get('strategy_name');
         const config = {};
         formData.forEach((value, key) => {
-            config[key] = isNaN(value) ? value : Number(value);
+            if (key !== 'strategy_name') {
+                config[key] = isNaN(value) ? value : Number(value);
+            }
         });
 
         fetch('/start', {
@@ -44,7 +47,10 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(config)
+            body: JSON.stringify({
+                strategy_name: strategyName,
+                config: config
+            })
         })
         .then(response => response.json())
         .then(data => {

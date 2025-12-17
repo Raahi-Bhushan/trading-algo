@@ -10,8 +10,14 @@ def index():
 
 @app.route('/start', methods=['POST'])
 def start_strategy():
-    config_overrides = request.json
-    message = manager.start(config_overrides)
+    data = request.json
+    strategy_name = data.get('strategy_name')
+    config_overrides = data.get('config')
+
+    if not strategy_name:
+        return jsonify({"message": "Error: strategy_name is required."}), 400
+
+    message = manager.start(strategy_name, config_overrides)
     return jsonify({"message": message})
 
 @app.route('/stop', methods=['POST'])
