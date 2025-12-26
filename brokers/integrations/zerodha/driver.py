@@ -52,22 +52,46 @@ class ZerodhaDriver(BrokerDriver):
         )
         self._kite = None  # kiteconnect client if available
         self._kite_ws = None
+        self.cache_dir = ".cache"
+        self.token_cache_file = os.path.join(self.cache_dir, "zerodha_access_token.txt")
+
+        # Ensure cache directory exists
+        if not os.path.exists(self.cache_dir):
+            os.makedirs(self.cache_dir)
+
+        # Try to load cached token
+        if os.path.exists(self.token_cache_file):
+            with open(self.token_cache_file, 'r') as f:
+                access_token = f.read().strip()
+            if access_token:
+                try:
+                    from kiteconnect import KiteConnect
+                    api_key = os.getenv("BROKER_API_KEY") or os.getenv("KITE_API_KEY") or os.getenv("ZERODHA_API_KEY")
+                    kite = KiteConnect(api_key=api_key)
+                    kite.set_access_token(access_token)
+                    # Validate token with a simple call
+                    kite.profile()
+                    self._kite = kite
+                except Exception:
+                    self._kite = None
 
         # Try to wire a ready KiteConnect if env provides api_key + access_token
-        import os
-        api_key = os.getenv("BROKER_API_KEY") or os.getenv("KITE_API_KEY") or os.getenv("ZERODHA_API_KEY")
-        access_token = (
-            os.getenv("BROKER_ACCESS_TOKEN") or os.getenv("KITE_ACCESS_TOKEN") or os.getenv("ZERODHA_ACCESS_TOKEN")
-        )
-        if api_key and access_token:
-            try:  # pragma: no cover - external package
-                from kiteconnect import KiteConnect  # type: ignore
+        if self._kite is None:
+            import os
+            api_key = os.getenv("BROKER_API_KEY") or os.getenv("KITE_API_KEY") or os.getenv("ZERODHA_API_KEY")
+            access_token = (
+                os.getenv("BROKER_ACCESS_TOKEN") or os.getenv("KITE_ACCESS_TOKEN") or os.getenv("ZERODHA_ACCESS_TOKEN")
+            )
+            if api_key and access_token:
+                try:  # pragma: no cover - external package
+                    from kiteconnect import KiteConnect  # type: ignore
 
-                kite = KiteConnect(api_key=api_key)
-                kite.set_access_token(access_token)
-                self._kite = kite
-            except Exception:
-                self._kite = None
+                    kite = KiteConnect(api_key=api_key)
+                    kite.set_access_token(access_token)
+                    self._kite = kite
+                    self._cache_token(access_token)
+                except Exception:
+                    self._kite = None
 
         # Optional TOTP login if requested and tokens missing
         if self._kite is None:
@@ -99,6 +123,11 @@ class ZerodhaDriver(BrokerDriver):
                 except Exception:
                     # Keep unauthenticated if manual flow fails
                     pass
+
+    def _cache_token(self, access_token: str) -> None:
+        """Cache the access token to a file."""
+        with open(self.token_cache_file, 'w') as f:
+            f.write(access_token)
 
     def _authenticate_via_totp(self) -> Optional[Any]:
         """Programmatic TOTP login using Zerodha web endpoints to obtain access token.
@@ -163,6 +192,7 @@ class ZerodhaDriver(BrokerDriver):
             if not access_token:
                 return None
             kite.set_access_token(access_token)
+            self._cache_token(access_token)
             return kite
         except Exception:
             return None
