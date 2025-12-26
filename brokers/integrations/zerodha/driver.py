@@ -304,9 +304,9 @@ class ZerodhaDriver(BrokerDriver):
         exch, tradingsymbol = symbol.split(":", 1)
         return Quote(symbol=tradingsymbol, exchange=Exchange[exch], last_price=last_price, raw=data)
 
-    def get_history(self, symbol: str, interval: str, start: str, end: str) -> List[Dict[str, Any]]:
+    def get_history(self, symbol: str, interval: str, start: str, end: str, oi: bool = False) -> List[Dict[str, Any]]:
         if not self._kite:
-            return []
+            raise PermissionError("Broker is not authenticated. Please provide valid credentials.")
         exch, tradingsymbol = symbol.split(":", 1)
         # Normalize common interval aliases to Kite format
         imap = {

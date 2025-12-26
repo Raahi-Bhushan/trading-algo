@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtester</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Trading Strategy Backtester</h1>
+        <form id="backtest-form" class="mt-4">
+            <div class="form-group">
+                <label for="symbol">Symbol</label>
+                <select class="form-control" id="symbol" required>
+                    <option value="NSE:NIFTY 50">NIFTY 50</option>
+                    {% for stock in nifty50_stocks %}
+                        <option value="NSE:{{ stock }}">{{ stock }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="start-date">Start Date</label>
+                <input type="date" class="form-control" id="start-date" required>
+            </div>
+            <div class="form-group">
+                <label for="end-date">End Date</label>
+                <input type="date" class="form-control" id="end-date" required>
+            </div>
+            <div class="form-group">
+                <label for="interval">Interval</label>
+                <select class="form-control" id="interval">
+                    <option value="15m">15 Minutes</option>
+                    <option value="day">Daily</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Run Backtest</button>
+        </form>
+
+        <div id="results" class="mt-5" style="display:none;">
+            <h2>Backtest Results</h2>
+            <p><strong>Total PnL:</strong> <span id="total-pnl"></span></p>
+            <p><strong>Win Rate:</strong> <span id="win-rate"></span>%</p>
+            <p><strong>Number of Trades:</strong> <span id="num-trades"></span></p>
+
+            <h3 class="mt-4">Trades</h3>
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Entry Time</th>
+                        <th>Entry Price</th>
+                        <th>Exit Price</th>
+                        <th>PnL</th>
+                        <th>Trade Type</th>
+                    </tr>
+                </thead>
+                <tbody id="trades-table">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        $('#backtest-form').on('submit', function(e) {
+            e.preventDefault();
+
+            const backtestData = {
+                symbol: $('#symbol').val(),
+                start_date: $('#start-date').val(),
+                end_date: $('#end-date').val(),
+                interval: $('#interval').val()
+            };
+
+            $.ajax({
+                url: '/backtest',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(backtestData),
+                success: function(data) {
+                    $('#total-pnl').text(data.total_pnl.toFixed(2));
+                    $('#win-rate').text(data.win_rate.toFixed(2));
+                    $('#num-trades').text(data.number_of_trades);
+
+                    let tradesHtml = '';
+                    data.trades.forEach(trade => {
+                        tradesHtml += `
+                            <tr>
+                                <td>${new Date(trade.entry_time).toLocaleString()}</td>
+                                <td>${trade.entry_price.toFixed(2)}</td>
+                                <td>${trade.exit_price.toFixed(2)}</td>
+                                <td class="${trade.pnl > 0 ? 'text-success' : 'text-danger'}">${trade.pnl.toFixed(2)}</td>
+                                <td>${trade.trade_type}</td>
+                            </tr>
+                        `;
+                    });
+
+                    $('#trades-table').html(tradesHtml);
+                    $('#results').show();
+                },
+                error: function(error) {
+                    alert('Error running backtest: ' + error.responseJSON.message);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
