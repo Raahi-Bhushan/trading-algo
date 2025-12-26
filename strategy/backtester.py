@@ -32,11 +32,22 @@ class BacktesterStrategy:
         """
         logger.info(f"Running backtest for {symbol} from {start_date} to {end_date} with interval {interval}")
 
+        # Download instruments to get lot size and other details
+        self.broker.download_instruments()
+
+        # Dynamically generate futures symbol
+        base_symbol = symbol.split(':')[-1]
+        start_month = pd.to_datetime(start_date).strftime('%b').upper()
+        start_year = pd.to_datetime(start_date).strftime('%y')
+        futures_symbol = f"NSE:{base_symbol}{start_year}{start_month}FUT"
+
+        logger.info(f"Dynamically generated futures symbol: {futures_symbol}")
+
         # Fetch historical data
         try:
-            data = self.broker.get_history(symbol, interval, start_date, end_date)
+            data = self.broker.get_history(futures_symbol, interval, start_date, end_date)
             if not data:
-                logger.error("No historical data found for the given parameters.")
+                logger.error(f"No historical data found for {futures_symbol}.")
                 return
 
             self.historical_data = pd.DataFrame(data)
@@ -85,6 +96,10 @@ class BacktesterStrategy:
         position = None
         capital = 100000  # Starting capital
         risk_per_trade = 0.01 # 1% of capital
+
+        # Get lot size for the instrument
+        instrument = self.broker.get_instruments()
+        lot_size = instrument[instrument['symbol'] == self.historical_data.iloc[0]['symbol']]['lot_size'].iloc[0]
 
         # Iterate through the data, leaving room for the 3-candle pattern
         for i in range(2, len(self.historical_data) - 1):
@@ -147,10 +162,16 @@ class BacktesterStrategy:
                     take_profit = entry_price + 2 * (entry_price - stop_loss)
 
                     # Risk Management
-                    if (entry_price - stop_loss) > (capital * risk_per_trade):
-                        continue # Skip trade if risk is too high
+                    trade_risk = entry_price - stop_loss
+                    if trade_risk > (capital * risk_per_trade) or trade_risk <= 0:
+                        continue # Skip trade if risk is too high or invalid
 
-                    quantity = (capital * risk_per_trade) / (entry_price - stop_loss)
+                    # Calculate quantity in lots
+                    num_lots = int((capital * risk_per_trade) / (trade_risk * lot_size))
+                    if num_lots < 1:
+                        continue # Skip trade if not enough capital for one lot
+
+                    quantity = num_lots * lot_size
 
                     position = {
                         'entry_time': entry_candle.name,
@@ -169,10 +190,16 @@ class BacktesterStrategy:
                     take_profit = entry_price - 2 * (stop_loss - entry_price)
 
                      # Risk Management
-                    if (stop_loss - entry_price) > (capital * risk_per_trade):
-                        continue # Skip trade if risk is too high
+                    trade_risk = stop_loss - entry_price
+                    if trade_risk > (capital * risk_per_trade) or trade_risk <= 0:
+                        continue # Skip trade if risk is too high or invalid
 
-                    quantity = (capital * risk_per_trade) / (stop_loss - entry_price)
+                    # Calculate quantity in lots
+                    num_lots = int((capital * risk_per_trade) / (trade_risk * lot_size))
+                    if num_lots < 1:
+                        continue # Skip trade if not enough capital for one lot
+
+                    quantity = num_lots * lot_size
 
                     position = {
                         'entry_time': entry_candle.name,
