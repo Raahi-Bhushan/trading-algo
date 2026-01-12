@@ -4,6 +4,7 @@ import yaml
 import pandas as pd
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from kiteconnect import KiteConnect
 
 # Add project root to path to access brokers
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,23 +20,41 @@ def load_config(config_path="config.yaml"):
     with open(config_path, "r") as f:
         return yaml.safe_load(f)
 
-def set_env_credentials(config):
+def authenticate_interactive(config):
     """
-    Sets environment variables from config for ZerodhaDriver to pick up.
+    Performs interactive login flow if access_token is missing.
     """
-    if 'api_key' in config:
-        os.environ['BROKER_API_KEY'] = config['api_key']
-    if 'access_token' in config:
-        os.environ['BROKER_ACCESS_TOKEN'] = config['access_token']
-    if 'api_secret' in config:
-        os.environ['BROKER_API_SECRET'] = config['api_secret']
-    if 'user_id' in config:
-        os.environ['BROKER_ID'] = config['user_id']
-    if 'password' in config:
-        os.environ['BROKER_PASSWORD'] = config['password']
-    if 'totp_key' in config:
-        os.environ['BROKER_TOTP_KEY'] = config['totp_key']
-        os.environ['BROKER_LOGIN_MODE'] = 'totp'
+    api_key = config.get('api_key')
+    api_secret = config.get('api_secret')
+
+    if not api_key or not api_secret:
+        print("Error: api_key and api_secret must be set in config.yaml")
+        sys.exit(1)
+
+    kite = KiteConnect(api_key=api_key)
+
+    # STEP 1: Generate login URL
+    login_url = kite.login_url()
+    print("\nLOGIN URL (open in browser):")
+    print(login_url)
+
+    # STEP 2: Get request_token from user
+    request_token = input("\nPaste request_token here: ").strip()
+
+    # STEP 3: Generate access token
+    try:
+        data = kite.generate_session(request_token, api_secret=api_secret)
+        access_token = data["access_token"]
+        print("\nLogin successful!")
+        print("Access Token:", access_token)
+
+        # Set environment variables for ZerodhaDriver
+        os.environ['BROKER_API_KEY'] = api_key
+        os.environ['BROKER_ACCESS_TOKEN'] = access_token
+
+    except Exception as e:
+        print(f"\nLogin Failed: {e}")
+        sys.exit(1)
 
 def download_data(driver, symbol, start_date, end_date, interval, output_file):
     print(f"Downloading {interval} data for {symbol} from {start_date} to {end_date}...")
@@ -94,9 +113,11 @@ def download_data(driver, symbol, start_date, end_date, interval, output_file):
 def main():
     # Load Configuration
     config = load_config("config.yaml")
-    set_env_credentials(config)
 
-    # Initialize Driver
+    # Authenticate interactively
+    authenticate_interactive(config)
+
+    # Initialize Driver (will pick up env vars set by authenticate_interactive)
     driver = ZerodhaDriver()
 
     # Check if connected
@@ -104,18 +125,15 @@ def main():
         profile = driver.get_profile()
         if "error" in profile:
             print(f"Connection Failed: {profile['error']}")
-            # In a real run, we might exit, but for testing script logic we continue if mocking is involved?
-            # But here we assume user provides valid creds.
-            if "unauthenticated" in profile.get("error", ""):
-                 print("Please check your credentials in config.yaml")
-                 sys.exit(1)
+            sys.exit(1)
         else:
              print(f"Connected as {profile.get('user_id', 'User')}")
     except Exception as e:
         print(f"Connection Check Error: {e}")
-        # sys.exit(1) # Commented out to allow dry run/testing of script structure
 
     # Parameters
+    # Note: ZerodhaDriver.get_history resolves token from symbol
+    # 'NSE:NIFTY 50' is standard for Nifty 50 Index on Kite
     symbol = "NSE:NIFTY 50"
     start_date = datetime(2020, 1, 1)
     end_date = datetime(2025, 12, 31)
@@ -125,7 +143,19 @@ def main():
         print(f"Adjusting end date from {end_date.date()} to today {datetime.now().date()}")
         end_date = datetime.now()
 
-    # Timeframes to download
+    # Timeframes to download - Using correct Kite Connect API strings
+    # The driver maps these:
+    # "15m" -> "15minute"
+    # "60m" -> "60minute"
+    # So using "15m" and "60m" is actually CORRECT for the Driver wrapper,
+    # but let's double check driver.py line 287 imap.
+
+    # In ZerodhaDriver.get_history:
+    # imap = { "15m": "15minute", "60m": "60minute", ... }
+    # So the driver DOES handle the mapping!
+    # However, to be explicit and safe given the review feedback,
+    # we can pass keys that map correctly.
+
     timeframes = ["15m", "60m"]
 
     for tf in timeframes:
