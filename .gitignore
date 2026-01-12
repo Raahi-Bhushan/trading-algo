@@ -13,3 +13,4 @@ strategy/configs/.wave.yml.swp
 brokers/.DS_Store
 .cache/zerodha_master_contract.csv
 wave_new.py
+.DS_Store
