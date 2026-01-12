@@ -1,5 +1,5 @@
 version = 1
-revision = 2
+revision = 3
 requires-python = ">=3.12"
 
 [[package]]
@@ -1279,6 +1279,7 @@ dependencies = [
     { name = "numba" },
     { name = "pandas" },
     { name = "pyotp" },
+    { name = "python-dateutil" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "ratelimit" },
@@ -1297,6 +1298,7 @@ requires-dist = [
     { name = "numba", specifier = ">=0.61.2" },
     { name = "pandas", specifier = ">=2.3.1" },
     { name = "pyotp", specifier = ">=2.9.0" },
+    { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "python-dotenv", specifier = ">=1.1.1" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "ratelimit", specifier = ">=2.2.1" },

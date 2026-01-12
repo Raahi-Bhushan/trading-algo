@@ -1,0 +1,9 @@
+# Zerodha API Configuration
+api_key: "your_api_key"
+access_token: "your_access_token"
+
+# Optional: For Auto-Login (TOTP)
+# api_secret: "your_api_secret"
+# user_id: "your_user_id"
+# password: "your_password"
+# totp_key: "your_totp_key"
