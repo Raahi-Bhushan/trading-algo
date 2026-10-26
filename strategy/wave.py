@@ -82,6 +82,7 @@ class WaveStrategy:
 
         self.handle_order_update_call_tracker = {}
         self.handle_order_update_call_tracker_response_dict = {}
+        self.orders_pending_pairing = set()
 
         
         logger.info(f"System initialized for {self.symbol_name}")
@@ -357,6 +358,7 @@ class WaveStrategy:
                        restrict_buy_order: int, restrict_sell_order: int) -> None:
         """Execute buy and sell orders based on restrictions"""
         sell_order_id = -1
+        buy_order_id = -1
         logger.info(f"Executing orders for {symbol} | Restrictions - Buy: {restrict_buy_order}, Sell: {restrict_sell_order}")
         if restrict_sell_order == 0:
             req = OrderRequest(
@@ -369,15 +371,11 @@ class WaveStrategy:
             logger.info("Sell Order Response - {}".format(sell_order_resp))
 
             sell_order_id = sell_order_resp.order_id
-            if sell_order_id not in self.orders:
-                self.handle_order_update_call_tracker[sell_order_id] = False
-
             if sell_order_id != -1:
+                self._mark_order_pairing_pending(sell_order_id)
                 logger.info(f"Placed SELL order {sell_order_id} for {self.sell_quantity} @ {final_sell_price}")
                 self.add_order_to_list(sell_order_id, final_sell_price, self.sell_quantity, "SELL", symbol, -1)
                 logger.info(f"handle_order_update_call_tracker: {self.handle_order_update_call_tracker}")
-                if not self.handle_order_update_call_tracker[sell_order_id]:
-                    self.handle_order_update(self.handle_order_update_call_tracker_response_dict[sell_order_id])
 
         # only when the sell order has been placed or sell order was restricred and buy order was not restricted
         if (restrict_sell_order == 1 or sell_order_id != -1) and restrict_buy_order == 0:
@@ -389,8 +387,8 @@ class WaveStrategy:
             buy_order_resp = self.broker.place_order(req)
             logger.info("Buy Order Response - {}".format(buy_order_resp))
             buy_order_id = buy_order_resp.order_id
-            self.handle_order_update_call_tracker[buy_order_id] = False
             if buy_order_id != -1:
+                self._mark_order_pairing_pending(buy_order_id)
                 logger.info(f"Placed BUY order {buy_order_id} for {self.buy_quantity} @ {final_buy_price}")
                 if sell_order_id != -1:
                     # Only if sell order is present in the orders list, then add buy order id as associated order id
@@ -399,13 +397,28 @@ class WaveStrategy:
                         self.add_order_to_list(sell_order_id, final_sell_price, self.sell_quantity, "SELL", symbol, buy_order_id)
                 self.add_order_to_list(buy_order_id, final_buy_price, self.buy_quantity, "BUY", symbol, sell_order_id)
                 logger.info(f"handle_order_update_call_tracker: {self.handle_order_update_call_tracker}")
-                if not self.handle_order_update_call_tracker[buy_order_id]:
-                    self.handle_order_update(self.handle_order_update_call_tracker_response_dict[buy_order_id])
             else:
                 logger.warning(f"Buy order failed, cancelling associated sell order {sell_order_id}")
                 self._remove_order(sell_order_id)
-                del self.handle_order_update_call_tracker[sell_order_id]
-                del self.handle_order_update_call_tracker_response_dict[sell_order_id]
+                self.handle_order_update_call_tracker.pop(sell_order_id, None)
+                self.handle_order_update_call_tracker_response_dict.pop(sell_order_id, None)
+
+        self._release_order_pairing(sell_order_id)
+        self._release_order_pairing(buy_order_id)
+
+    def _mark_order_pairing_pending(self, order_id):
+        if order_id == -1:
+            return
+        self.orders_pending_pairing.add(order_id)
+        self.handle_order_update_call_tracker.setdefault(order_id, False)
+
+    def _release_order_pairing(self, order_id):
+        if order_id == -1:
+            return
+        self.orders_pending_pairing.discard(order_id)
+        order_data = self.handle_order_update_call_tracker_response_dict.pop(order_id, None)
+        if order_data is not None and order_id in self.orders:
+            self.handle_order_update(order_data)
 
     def add_order_to_list(self, order_id, price, quantity, transaction_type, symbol, associated_order_id):
         now = datetime.datetime.now()
@@ -556,10 +569,6 @@ class WaveStrategy:
         restrict_buy = restrictions.get(symbol_type, {}).get("buy") == "no"
         restrict_sell = restrictions.get(symbol_type, {}).get("sell") == "no"
         
-        if not (restrict_buy or restrict_sell):
-            logger.info("No new restrictions apply. Active orders are safe.")
-            return
-
         try:
             # Some State variables to track
             sell_order_present = False
@@ -636,6 +645,8 @@ class WaveStrategy:
                             self.add_order_to_list(sell_order_id, final_sell_price, final_sell_qty, "SELL", symbol, -1)
                             if not self.handle_order_update_call_tracker[sell_order_id]:
                                 self.handle_order_update(self.handle_order_update_call_tracker_response_dict[sell_order_id])
+
+                        sell_order_present = sell_order_id != -1
                 else:
                     logger.critical("No previous wave sell price found. This should not happen.")
 
@@ -659,7 +670,7 @@ class WaveStrategy:
                             if not self.handle_order_update_call_tracker[buy_order_id]:
                                 self.handle_order_update(self.handle_order_update_call_tracker_response_dict[buy_order_id])
                         else:
-                            self.add_order_to_list(buy_order_id, final_buy_price, self.final_quantity, "BUY", symbol, -1)
+                            self.add_order_to_list(buy_order_id, final_buy_price, final_quantity, "BUY", symbol, -1)
                             if not self.handle_order_update_call_tracker[buy_order_id]:
                                 self.handle_order_update(self.handle_order_update_call_tracker_response_dict[buy_order_id])
                 else:
@@ -723,7 +734,7 @@ class WaveStrategy:
                         
         # Handle associated order cancellation
         associated_order_id = order_info.get('associated_order')
-        if associated_order_id:
+        if associated_order_id not in (None, -1):
             try:
                 self.broker.cancel_order(order_id=associated_order_id)
                 logger.info(f"Cancelled associated order {associated_order_id}")
@@ -790,6 +801,12 @@ class WaveStrategy:
             return
             
         logger.info(f"Order Update: {order_data}")
+        if order_id in self.orders_pending_pairing:
+            self.handle_order_update_call_tracker[order_id] = False
+            self.handle_order_update_call_tracker_response_dict[order_id] = order_data
+            logger.info(f"Deferred order update for order {order_id} until sibling pairing is complete")
+            return
+
         # print("self.orders -> ", self.orders)
         if order_id not in self.orders:
             logger.info(f"Order {order_id} not found in orders list")
@@ -1436,4 +1453,3 @@ PARAMETER GROUPS:
         sys.exit(1)
     finally:
         logger.info("STRATEGY SHUTDOWN COMPLETE")
-
